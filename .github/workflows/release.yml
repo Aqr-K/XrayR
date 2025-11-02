@@ -2,21 +2,32 @@ name: Build and Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
-  pull_request:
-    types: [ opened, synchronize, reopened ]
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true  # 将此输入设置为必需
+        type: string
+        default: ''
+      overwrite:
+        description: '覆盖现有的发布文件（如果存在）'
+        required: false
+        type: boolean
+        default: false
+  # push:
+  #   branches:
+  #     - master
+  #   paths:
+  #     - "**/*.go"
+  #     - "go.mod"
+  #     - "go.sum"
+  #     - ".github/workflows/*.yml"
+  # pull_request:
+  #   types: [ opened, synchronize, reopened ]
+  #   paths:
+  #     - "**/*.go"
+  #     - "go.mod"
+  #     - "go.sum"
+  #     - ".github/workflows/*.yml"
   release:
     types: [ published ]
 
@@ -181,11 +192,13 @@ jobs:
           name: XrayR-${{ steps.get_filename.outputs.ASSET_NAME }}
           path: |
             ./XrayR-${{ steps.get_filename.outputs.ASSET_NAME }}/*
+      # 上传二进制文件到发布页面
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./XrayR-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
-          tag: ${{ github.ref }}
+          # 如果是release事件触发，则直接使用；手动触发，则需要输入 input.tag
+          tag: ${{ github.event_name == 'release' && github.ref || inputs.tag }}
           file_glob: true
+          overwrite: ${{ github.event_name == 'release' && true || inputs.overwrite }}
